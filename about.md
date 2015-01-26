@@ -3,28 +3,25 @@ layout: page
 title: About
 ---
 
-<p class="message">
-  Hey there! This page is included as an example. Feel free to customize it for your own use upon downloading. Carry on!
-</p>
+I am a Silicon Valley veteran living in Seattle. I do advanced work in databases, massively parallel systems, and algorithmic information theory. Spatial data structures and algorithms are a specialty of mine. Most of the computer science research I do is never published even though it is often embedded in commercial software. This blog will hopefully close that gap a bit.
 
-In the novel, *The Strange Case of Dr. Jekyll and Mr. Hyde*, Mr. Poole is Dr. Jekyll's virtuous and loyal butler. Similarly, Poole is an upstanding and effective butler that helps you build Jekyll themes. It's made by [@mdo](https://twitter.com/mdo).
+[SpaceCurve](http://www.spacecurve.com) is a startup I founded in 2009. It is a spatial data platform with the unique ability to continuously ingest, fuse, store, and analyze real-time data sources in a single spatiotemporal context at massive scales. Think of it as a continuously updated and fully analyzable mirror of the physical world constructed from every data source available. Not a visualization but the underlying data model of reality with relationships across sensor and data streams preserved. The entire system was designed from scratch and embodies significant computer science advances at every part of the stack.
 
-There are currently two themes built on Poole:
+I am accessible on [Twitter](https://twitter.com/jandrewrogers) and [Email](mailto:andrew@jarbox.org).
 
-* [Hyde](http://hyde.getpoole.com)
-* [Lanyon](http://lanyon.getpoole.com)
+The "J" in my name is silent.
 
-Learn more and contribute on [GitHub](https://github.com/poole).
+### Software I Currently Build
 
-## Setup
+* Database Engines
+* Parallel Algorithms
+* Spatial Data Structures
+* Fast Integer Algorithms 
 
-Some fun facts about the setup of this project include:
+### Computer Science I Currently Research
 
-* Built for [Jekyll](http://jekyllrb.com)
-* Developed on GitHub and hosted for free on [GitHub Pages](https://pages.github.com)
-* Coded with [Sublime Text 2](http://sublimetext.com), an amazing code editor
-* Designed and developed while listening to music like [Blood Bros Trilogy](https://soundcloud.com/maddecent/sets/blood-bros-series)
+* Topological Computation
+* Algorithmic Induction
+* Decentralized Systems
+* Optimal Routing
 
-Have questions or suggestions? Feel free to [open an issue on GitHub](https://github.com/poole/poole/issues/new) or [ask me on Twitter](https://twitter.com/mdo).
-
-Thanks for reading!
