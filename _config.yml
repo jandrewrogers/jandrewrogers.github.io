@@ -10,7 +10,7 @@ relative_permalinks: true
 
 # Setup
 title:               J. Andrew Rogers
-tagline:             'In Pursuit of the Perfect Algorithm'
+tagline:             'Pursuit of a Perfect Algorithm'
 description:         'A reserved <a href="http://jekyllrb.com" target="_blank">Jekyll</a> theme that places the utmost gravity on content with a hidden drawer. Made by <a href="https://twitter.com/mdo" target="_blank">@mdo</a>.'
 url:                 http://lanyon.getpoole.com
 baseurl:             /
@@ -19,6 +19,7 @@ paginate:            5
 # About/contact
 author:
   name:              J. Andrew Rogers
+  twitter:			 jandrewrogers
   url:               https://twitter.com/jandrewrogers
   email:             andrew@jarbox.org
 
