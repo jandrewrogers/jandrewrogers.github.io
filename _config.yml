@@ -1,27 +1,19 @@
-# Dependencies
-markdown:            redcarpet
-highlighter:         pygments
-
 # Permalinks
-#
-# Use of `relative_permalinks` ensures post links from the index work properly.
-permalink:           pretty
+permalink:        pretty
 relative_permalinks: true
 
 # Setup
-title:               J. Andrew Rogers
-tagline:             'Pursuit of a Perfect Algorithm'
-description:         'A reserved <a href="http://jekyllrb.com" target="_blank">Jekyll</a> theme that places the utmost gravity on content with a hidden drawer. Made by <a href="https://twitter.com/mdo" target="_blank">@mdo</a>.'
-url:                 http://lanyon.getpoole.com
-baseurl:             /
-paginate:            5
-
-# About/contact
+title:            J. Andrew Rogers
+tagline:          Pursuit of a Perfect Algorithm
+url:              http://jandrewrogers.com
+paginate:         1
+baseurl:          /
 author:
-  name:              J. Andrew Rogers
-  twitter:			 jandrewrogers
-  url:               https://twitter.com/jandrewrogers
-  email:             andrew@jarbox.org
+  name:           J. Andrew Rogers
+  url:            https://twitter.com/jandrewrogers
+  email:          andrew@jarbox.org
 
 # Custom vars
-version:             1.0.0
+version:          1.0.0
+github:
+  repo:           https://github.com/poole/poole
