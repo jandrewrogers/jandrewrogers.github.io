@@ -5,12 +5,14 @@ relative_permalinks: true
 # Setup
 title:            J. Andrew Rogers
 tagline:          Pursuit of a Perfect Algorithm
-url:              http://jandrewrogers.com
+url:              http://localhost:4000
 paginate:         1
 baseurl:          /
 author:
   name:           J. Andrew Rogers
-  url:            https://twitter.com/jandrewrogers
+  twitter:        https://twitter.com/jandrewrogers
+  facebook:       https://www.facebook.com/j.andrew.rogers
+  linkedin:       https://www.linkedin.com/in/jandrewrogers
   email:          andrew@jarbox.org
 
 # Custom vars

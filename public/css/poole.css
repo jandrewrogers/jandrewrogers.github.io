@@ -228,7 +228,7 @@ blockquote p:last-child {
 }
 
 img {
-  display: block;
+  display: inline-block;
   max-width: 100%;
   margin: 0 0 1rem;
   border-radius: 5px;
@@ -307,8 +307,9 @@ tbody tr:nth-child(odd) th {
 }
 .masthead-title {
   margin-top: 0;
-  margin-bottom: 0;
+  margin-bottom: 3rem;
   color: #505050;
+  float: left;
 }
 .masthead-title a {
   color: #505050;
@@ -318,6 +319,25 @@ tbody tr:nth-child(odd) th {
   font-weight: 400;
   color: #c0c0c0;
   letter-spacing: 0;
+}
+
+.masthead-menu {
+  margin-top: 0;
+  margin-bottom: 3rem;
+  font-weight: 400;
+  font-size: 90%;
+  color: #a0a0a0;
+  letter-spacing: 0;
+  float: right;
+}
+.masthead-menu a {
+  color: #a0a0a0;
+  text-decoration: none;
+}
+.masthead-menu img {
+  display: inline-block;
+  margin: 4px;
+  float: left;
 }
 
 
