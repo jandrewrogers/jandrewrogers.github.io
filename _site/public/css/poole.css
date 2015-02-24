@@ -97,6 +97,7 @@ h2 {
 h3 {
   margin-top: 1.5rem;
   font-size: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 h4, h5, h6 {
   margin-top: 1rem;
@@ -365,6 +366,7 @@ tbody tr:nth-child(odd) th {
 }
 
 /* Meta data line below post title */
+.page-date,
 .post-date {
   display: block;
   margin-top: -.5rem;

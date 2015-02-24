@@ -2,7 +2,8 @@
 <html lang="en">
 
   {% include head.html %}
-
+  {% include google_analytics.html %}
+  
   <body>
 
     <div class="container content">
@@ -15,7 +16,7 @@
         <h2 class="masthead-menu">
           <a href="{{ site.baseurl }}about/" title="Home">About</a>
           &nbsp;
-          <a href="{{ site.baseurl }}" title="Home">Archive</a>
+          <a href="{{ site.baseurl }}archive/" title="Home">Archive</a>
           <br />
           <a href="mailto:{{ site.author.email }}"><img class="masthead-icon" src="/public/email.svg" height="24" width="24" /></a>
           <a href="{{ site.author.twitter  }}"><img class="masthead-icon" src="/public/twitter.svg"  height="24" width="24" /></a>
