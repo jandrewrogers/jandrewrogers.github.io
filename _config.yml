@@ -5,7 +5,7 @@ relative_permalinks: true
 # Setup
 title:            J. Andrew Rogers
 tagline:          Pursuit of a Perfect Algorithm
-url:              http://localhost:4000
+url:              http://jandrewrogers.com
 paginate:         1
 baseurl:          /
 author:
