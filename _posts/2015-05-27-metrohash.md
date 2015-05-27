@@ -1,14 +1,14 @@
 ---
 layout: post
-title: "MetroHash: A Superior Breed Of Hash Function"
+title: "MetroHash: Faster, Better Hash Functions"
 ---
 
-MetroHash is a set of state-of-the-art hash functions for non-cryptographic use cases. **They are notable for being algorithmically generated in addition to their exceptional performance.** Get the source here. I may expand the set of published hash functions in the future.
+MetroHash is a set of state-of-the-art hash functions for non-cryptographic use cases. **They are notable for being algorithmically generated in addition to their exceptional performance.** [Get the source here](https://github.com/jandrewrogers/MetroHash). The set of published hash functions may expand in the future.
 
-* Fastest general-purpose bulk hash functions
-* Fastest general-purpose small key hash functions
-* Excellent statistical properties, similar to MD5
-* Currently 64-bit, 128-bit, and 128-bit CRC intrinsic variants
+* Fastest general-purpose algorithms for bulk hashing
+* Fastest general-purpose algorithms for small, variable length keys
+* Excellent statistical quality, similar to MD5
+* Currently 64-bit, 128-bit, and 128-bit CRC instruction variants
 * Unbounded set of statistically unique hash functions can be generated
 * Elegant, compact, readable functions
 
@@ -18,7 +18,7 @@ The six functions included here were generated in an afternoon from three closel
 
 ### Performance
 
-MetroHash functions are substantially faster than comparable algorithms while offering a statistical bias profile similar to MD5, a cryptographic hash. Functions generated in the same family have identical performance characteristics but are effectively statistically independent. In other words, you can use the "metro64_1" and "metro64_2" hash functions in the same Bloom filter implementation without issue.
+MetroHash functions are much faster than comparable algorithms (metro128crc does 24+ GB/s in my environment) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family have identical performance characteristics but are effectively statistically independent. You can use the "metrohash64_1" and "metrohash64_2" functions in the same Bloom filter implementation without issue.
 
 Google's [CityHash](https://code.google.com/p/cityhash/) functions are used for speed comparison below since they are among the fastest high-quality functions and are available in the same variants. Relative performance varies a small amount across microarchitectures. The following table is typical for my Haswell test environment.
 
@@ -30,15 +30,15 @@ Google's [CityHash](https://code.google.com/p/cityhash/) functions are used for 
 |**Metro128crc** | 30% faster than City128crc  | 80% faster than City128crc  |
 
 
-The three hash function families included are designed to be good general purpose hash functions much like CityHash. It is also possible to generate hash functions that are more highly optimized for a narrower set of use cases. 
+The six MetroHash algorithms included are designed to be general-purpose hash functions, much like CityHash. It is also possible to generate hash functions that are more highly optimized for a narrower set of use cases. 
 
 ### Background
 
-A few years ago I had a number of use cases for hash functions that were not being adequately served by popular algorithms. The hash functions were generally suboptimal, giving up too much speed or too much statistical quality or both. I wanted an entire ecosystem of high-quality, high-performance hash functions that went beyond what something like Google's [CityHash](https://code.google.com/p/cityhash/) was delivering. MetroHash was the working name for my project to create it.
+A few years ago I had a number of use cases for hash functions that were not being adequately served by popular algorithms. The hash functions were generally suboptimal, giving up too much speed or too much statistical quality or both. I needed an expanded ecosystem of high-quality, high-performance hash functions that went beyond what something like Google's [CityHash](https://code.google.com/p/cityhash/) could deliver. MetroHash was the working name for my project to create it.
 
-Designing fast, robust hash functions by hand is extremely painful. My solution was to design algorithms and software that could iteratively generate, analyze, and optimize hash functions across an intractably large universe of potential hash function designs. The nature of the process is beyond the scope of this post, but conceptually it uses gradient descent to search for certain types of smoothable high-order, high-dimensionality functions, derivatives of which can be used to analytically construct a hash function with a relatively high probability of good statistical quality. Over the nearly 100,000 compute hours spent on this analysis, the quality of the hash functions producible from the analysis data progressively improved. It was cool research project and produced great results.
+Designing fast, robust hash functions by hand is painful. My solution was to design algorithms and software that could iteratively generate, analyze, and optimize hash functions across an intractably large universe of potential hash function designs. The nature of the process is beyond the scope of this post, but conceptually it uses gradient descent to search for certain types of smoothable high-order, high-dimensionality functions, derivatives of which can be used to analytically construct a hash function with a relatively high probability of exhibiting high statistical quality. Over the nearly 100,000 compute hours spent on this analysis, the quality of the hash functions producible from the analysis data progressively improved. It was cool research and produced great results.
 
-There is known room for improvement with additional analysis and likely with expanded use of instruction set extensions. However, this is not an active project. I had to dust off the code in order to write this post.
+There is known room for improvement with additional analysis and likely with expanded use of instruction set extensions. However, this is not an active project for me. I had to dust off the code in order to generate the six functions included here.
 
 ### Some Notes And Observations
 
