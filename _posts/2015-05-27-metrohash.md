@@ -7,18 +7,19 @@ MetroHash is a set of state-of-the-art hash functions for non-cryptographic use 
 
 * Fastest general-purpose algorithms for bulk hashing
 * Fastest general-purpose algorithms for small, variable length keys
-* Excellent statistical quality, similar to MD5
+* Excellent statistical quality, similar to cryptographic hashes
+* Supports both incremental and one-shot hashing
 * Currently 64-bit, 128-bit, and 128-bit CRC instruction variants
 * Unbounded set of statistically unique hash functions can be generated
 * Elegant, compact, readable functions
 
 In 2012, I started generating high-quality hash function families using a novel algorithm analysis and generation technique I developed. Thousands of excellent hash functions have been constructed this way. Function families are tunable for a mix of speed, statistical quality, and instruction set. Resistance to cryptanalysis was not a design criterion.
 
-The six functions included here were generated in an afternoon from three closely related families, two functions from each family. All easily pass Austin Appleby's [excellent SMHasher test suite](https://code.google.com/p/smhasher/). While these hash functions are optimized for modern Intel x86 with no attempt at portability, the underlying technique can be generalized to any microarchitecture. 
+The set of functions included here were generated in an afternoon from related families. All easily pass Austin Appleby's [excellent SMHasher test suite](https://code.google.com/p/smhasher/). While these hash functions are optimized for modern Intel x86 with no attempt at portability, the underlying technique can be generalized to any microarchitecture. 
 
 ### Performance
 
-MetroHash functions are much faster than comparable algorithms (metro128crc does 24+ GB/s in my environment) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family have identical performance characteristics but are effectively statistically independent. You can use the "metrohash64_1" and "metrohash64_2" functions in the same Bloom filter implementation without issue.
+MetroHash functions are much faster than comparable algorithms (metro128crc is memory bandwidth bound for large keys) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family, or using a different seed, have identical performance characteristics but are effectively statistically independent. 
 
 Google's [CityHash](https://code.google.com/p/cityhash/) functions are used for speed comparison below since they are among the fastest high-quality functions and are available in the same variants. Relative performance varies a small amount across microarchitectures. The following table is typical for my Haswell test environment.
 
@@ -30,7 +31,7 @@ Google's [CityHash](https://code.google.com/p/cityhash/) functions are used for 
 |**Metro128crc** | 30% faster than City128crc  | 80% faster than City128crc  |
 
 
-The six MetroHash algorithms included are designed to be general-purpose hash functions, much like CityHash. It is also possible to generate hash functions that are more highly optimized for a narrower set of use cases. 
+The MetroHash algorithms included are designed to be general-purpose hash functions, much like CityHash. It is also possible to generate hash functions that are more highly optimized for a narrower set of use cases. 
 
 ### Background
 
@@ -38,7 +39,7 @@ A few years ago I had a number of use cases for hash functions that were not bei
 
 Designing fast, robust hash functions by hand is painful. My solution was to design algorithms and software that could iteratively generate, analyze, and optimize hash functions across an intractably large universe of potential hash function designs. The nature of the process is beyond the scope of this post, but conceptually it uses gradient descent to search for certain types of smoothable high-order, high-dimensionality functions, derivatives of which can be used to analytically construct a hash function with a relatively high probability of exhibiting high statistical quality. Over the nearly 100,000 compute hours spent on this analysis, the quality of the hash functions producible from the analysis data progressively improved. It was cool research and produced great results.
 
-There is known room for improvement with additional analysis and likely with expanded use of instruction set extensions. However, this is not an active project for me. I had to dust off the code in order to generate the six functions included here.
+There is known room for improvement with additional analysis and likely with expanded use of instruction set extensions. However, this is not an active project for me. I had to dust off the code in order to generate the functions included here.
 
 ### Some Notes And Observations
 
