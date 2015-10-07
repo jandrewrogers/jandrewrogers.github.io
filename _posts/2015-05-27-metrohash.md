@@ -19,7 +19,7 @@ The set of functions included here were generated in an afternoon from related f
 
 ### Performance
 
-MetroHash functions are much faster than comparable algorithms (metro128crc is memory bandwidth bound for large keys) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family, or using a different seed, have identical performance characteristics but are effectively statistically independent. 
+MetroHash functions are much faster than comparable algorithms (metro128crc is often memory bandwidth bound for large keys) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family, or using a different seed, have identical performance characteristics but are effectively statistically independent. 
 
 Google's [CityHash](https://code.google.com/p/cityhash/) functions are used for speed comparison below since they are among the fastest high-quality functions and are available in the same variants. Relative performance varies a small amount across microarchitectures. The following table is typical for my Haswell test environment.
 
