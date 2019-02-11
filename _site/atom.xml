@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
  <title>J. Andrew Rogers</title>
- <link href="http://localhost:4000/atom.xml" rel="self"/>
- <link href="http://localhost:4000/"/>
- <updated>2015-02-24T13:44:10-08:00</updated>
- <id>http://localhost:4000</id>
+ <link href="http://jandrewrogers.com/atom.xml" rel="self"/>
+ <link href="http://jandrewrogers.com/"/>
+ <updated>2019-02-11T09:23:37-08:00</updated>
+ <id>http://jandrewrogers.com</id>
  <author>
    <name>J. Andrew Rogers</name>
    <email>andrew@jarbox.org</email>
@@ -13,19 +13,171 @@
 
  
  <entry>
+   <title>SpaceCurve: An Unique And Fast Geospatial Database</title>
+   <link href="http://jandrewrogers.com//2015/10/08/spacecurve/"/>
+   <updated>2015-10-08T00:00:00-07:00</updated>
+   <id>http://jandrewrogers.com/2015/10/08/spacecurve</id>
+   <content type="html">&lt;p&gt;The design of SpaceCurve has been the object of speculation for many years. SpaceCurve was created to provide a real-time, continuously updated, perpetually logged data view of everything that happens in the physical world for analysis at extreme scales. The term “database” is used loosely.&lt;/p&gt;
+
+&lt;p&gt;In principle, a single dense rack of commodity Linux servers can do the following simultaneously:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Continuously insert a billion GeoJSON documents per minute through disk. This includes parsing JSON and indexing polygons in 3-space.&lt;/li&gt;
+  &lt;li&gt;Execute real-time queries that can seamlessly blend new and old data. Queries are automatically and transparently parallelized across the cluster.&lt;/li&gt;
+  &lt;li&gt;Fuse dozens of live data sources with spatiotemporal joins to generate real-time context for billions of people, places, and things at global scales.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;It is, as one government user put it, “ungodly ridiculously fast”. The above gives a flavor of what it can do and why it exists, but this post is about how it does it.&lt;/p&gt;
+
+&lt;p&gt;SpaceCurve is a prototype of a new class of database architecture. It fuses two novel computer science foundations that make it optimal for workloads that mix extremely high concurrent write rates with low-latency parallel queries. First, it is a &lt;strong&gt;CPU sharding software architecture&lt;/strong&gt;, which radically improves operation throughput rates relative to multithreaded software architectures on modern hardware. Second, the database is &lt;strong&gt;built on discrete topology&lt;/strong&gt; internals, not ordered sets, which is more efficient for massively parallelizing most database operations, notably geospatial and join operations. The combined architecture is state-of-the-art for both scale-up and scale-out databases. Graph, document, or relational databases could be designed with similar characteristics.&lt;/p&gt;
+
+&lt;h3 id=&quot;cpu-sharding-software-architecture&quot;&gt;CPU Sharding Software Architecture&lt;/h3&gt;
+
+&lt;p&gt;CPU sharding architectures originated in high-performance computing (HPC) as an answer to the problem of proliferating core counts in CPUs. A modern server is a large distributed system in every sense. Shared resources on a single server therefore require coordination to ensure consistency. As with other distributed systems, even coordination protocols in hardware (e.g. lock-free algorithms) become expensive as the number of cores grows. Multithreaded software architectures rely on ubiquitous coordination and data movement across server silicon; CPU sharding architectures attempt to virtually eliminate it.&lt;/p&gt;
+
+&lt;p&gt;CPU sharding brings “shared nothing” down into the silicon of a single server. It is an atypically effective macro-optimization and can improve operation throughput upwards of 10x versus conventional multithreading. In these architectures, every core has a single process locked to it and CPU-local RAM that it shares with no other process. This can be extended to I/O to the extent possible, giving each process direct access to dedicated hardware queues for networking and bypassing the kernel for disk operations. Every process shares its silicon with as few other processes as the hardware and operating system allow. There is only marginally more communication between cores on the same CPU than there is between cores on different servers. &lt;a href=&quot;http://www.scylladb.com&quot;&gt;ScyllaDB&lt;/a&gt;, recently announced, is a rare open source example of a CPU sharding design.&lt;/p&gt;
+
+&lt;p&gt;This architecture trades one type of complexity for another. It virtually eliminates thread concurrency overhead and complexity while greatly reducing average latencies across every part of the code base during execution. However, these designs also require every process to be a sophisticated scheduling engine at its core, a something traditionally left to operating systems.&lt;/p&gt;
+
+&lt;p&gt;SpaceCurve’s database kernel is a conventional CPU sharding architecture, directly implementing its own I/O and execution schedulers in user space. It also has some additional elements that extend the performance beyond what is implied by CPU sharding:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Queries are dynamically compiled with LLVM&lt;/li&gt;
+  &lt;li&gt;Discrete topology internals largely obviate secondary indexing&lt;/li&gt;
+  &lt;li&gt;Thousands of shards per process with continuous rebalancing under load&lt;/li&gt;
+  &lt;li&gt;Optimized C++11 with few external dependencies, about 250,000 lines.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;A philosophy of implementation is that acceptable bottlenecks are network bandwidth, usually 10 GbE, and memory bandwidth. People are frequently surprised that disk I/O is not on that list, because of the implication that the software should be at least as fast as in-memory databases given otherwise identical hardware. Modern disk storage has sufficient bandwidth for most workloads such that being in-memory solves a performance problem only to the extent that having no I/O scheduler is faster than a poor I/O scheduler.&lt;/p&gt;
+
+&lt;h3 id=&quot;parallel-computing-with-discrete-topology&quot;&gt;Parallel Computing With Discrete Topology&lt;/h3&gt;
+
+&lt;p&gt;Databases built on manipulating ordered sets of records cannot scale-out operations on geospatial data models even in theory. The reason is simple: the underlying data types have no order and are not set-wise shardable, eliminating almost every technique a typical database has for efficiently representing and manipulating data models at scale. Computational representation of data models that do not meaningfully map to ordered sets has been studied with little success since the 1960s, but this had few practical implications for the average developer until recently. Outside of HPC codes, geospatial, and complex event processing, you were unlikely to see an application where it mattered.&lt;/p&gt;
+
+&lt;p&gt;In 2006, I started working on the design of algorithms for a distributed database based purely on interval data types, which in theory &lt;em&gt;could&lt;/em&gt; express geospatial data models efficiently, &lt;a href=&quot;http://www.jandrewrogers.com/2015/03/02/geospatial-databases-are-hard/&quot;&gt;having learned the hard way that solving these problems was unavoidable&lt;/a&gt;. The computer science literature had little to offer but I found hints of how one might attack these problems in the information theory and topology literature. A fully generalized solution produces a deep stack of novel computer science built on top of discrete topologies instead of ordered sets. Proper implementations have exotic characteristics:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The only primitive types are hyper-rectangles of infinite volume&lt;/li&gt;
+  &lt;li&gt;Arbitrary compositions of primitives are computationally homomorphic&lt;/li&gt;
+  &lt;li&gt;Data model representation is adaptive, distributable, and universal&lt;/li&gt;
+  &lt;li&gt;Most algorithms built on topology manipulation are inherently parallelizable&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Surprisingly, good implementations are compact, efficient, and readable, losing nothing to ordered set algorithms except familiarity. However, even if you can see what an implementation does, the &lt;em&gt;why&lt;/em&gt; is rarely obvious to the uninitiated.&lt;/p&gt;
+
+&lt;p&gt;SpaceCurve’s primary internal data structures and algorithms are all based on parallelized discrete topology, simplified to reflect a geospatially optimized use case. When you run a SQL query, it is immediately translated into this. Discrete topology implementations have several advantages for databases generally:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;A record and a constraint are literally the same thing.&lt;/strong&gt; They can be stored and processed the same way. By implication, efficient stream processing of the insertion pipeline is a trivial extension of ordinary record selection, both of which are content-addressable operations.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Relationships between arbitrary constraints are content-addressable.&lt;/strong&gt; The computational cost is similar to hashing while preserving selectivity across a &lt;em&gt;much&lt;/em&gt; richer set of relationships. By implication, secondary indexing is not that useful.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Every data model is represented by the same “indexing” structure.&lt;/strong&gt;  Social graph and geospatial polygon data models use the same adaptive organization and access method under the hood. The operations that can be directly applied are not dependent different organizations.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Ad hoc joins are efficiently and massively parallelizable.&lt;/strong&gt; The expressiveness of join-like traversals within and between data models is a unique characteristic of topological implementations. SpaceCurve’s algorithms were originally prototyped as a parallel graph analysis engine.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;There is one significant drawback that should not be understated. Algorithm design using topology manipulation can be enormously challenging to reason about. You are often taking a conceptually simple algorithm, like a nested loop or hash join, and replacing it with a much more efficient algorithm involving the non-trivial manipulation of complex high-dimensionality constraint spaces that effect the same result. Routinely reasoning about complex object relationships in greater than three dimensions, and constructing correct parallel algorithms that exploit them, becomes easier but never easy.&lt;/p&gt;
+
+&lt;h3 id=&quot;related-trivia&quot;&gt;Related Trivia&lt;/h3&gt;
+
+&lt;p&gt;The platform contains a state-of-the-art non-Euclidean geometry engine designed from scratch, with particular focus on correctness and precision. It is used to reason about relationships in its internal 3-space model of the physical world. The extent to which other popular geospatial platforms regularly produce different results due to defects in their geometry engines is astonishing.&lt;/p&gt;
+
+&lt;p&gt;Literature on CPU sharding &lt;em&gt;per se&lt;/em&gt; is scarce but the technical skills to implement it are not and many software systems have been built this way. I expect to see more software designed this way in the future, the benefits are hard to ignore.&lt;/p&gt;
+
+&lt;p&gt;There is virtually no literature on practical representations of topological spaces, never mind parallel algorithms using those representations. A thorough exposition of both the theory and practice is on the order of a few hundred pages of dense technical literature that no one has had time to write, despite multiple implementations. Watch this space.&lt;/p&gt;
+
+&lt;p&gt;Internally, we call “CPU sharding + discrete topology” database architectures the Madrid architecture. I wrote an early definition of the draft concept in a hotel room in Madrid and the name stuck.&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
+   <title>MetroHash: Faster, Better Hash Functions</title>
+   <link href="http://jandrewrogers.com//2015/05/27/metrohash/"/>
+   <updated>2015-05-27T00:00:00-07:00</updated>
+   <id>http://jandrewrogers.com/2015/05/27/metrohash</id>
+   <content type="html">&lt;p&gt;MetroHash is a set of state-of-the-art hash functions for non-cryptographic use cases. &lt;strong&gt;They are notable for being algorithmically generated in addition to their exceptional performance.&lt;/strong&gt; &lt;a href=&quot;https://github.com/jandrewrogers/MetroHash&quot;&gt;Get the source here&lt;/a&gt;. The set of published hash functions may expand in the future.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Fastest general-purpose algorithms for bulk hashing&lt;/li&gt;
+  &lt;li&gt;Fastest general-purpose algorithms for small, variable length keys&lt;/li&gt;
+  &lt;li&gt;Excellent statistical quality, similar to cryptographic hashes&lt;/li&gt;
+  &lt;li&gt;Supports both incremental and one-shot hashing&lt;/li&gt;
+  &lt;li&gt;Currently 64-bit, 128-bit, and 128-bit CRC instruction variants&lt;/li&gt;
+  &lt;li&gt;Unbounded set of statistically unique hash functions can be generated&lt;/li&gt;
+  &lt;li&gt;Elegant, compact, readable functions&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In 2012, I started generating high-quality hash function families using a novel algorithm analysis and generation technique I developed. Thousands of excellent hash functions have been constructed this way. Function families are tunable for a mix of speed, statistical quality, and instruction set. Resistance to cryptanalysis was not a design criterion.&lt;/p&gt;
+
+&lt;p&gt;The set of functions included here were generated in an afternoon from related families. All easily pass Austin Appleby’s &lt;a href=&quot;https://code.google.com/p/smhasher/&quot;&gt;excellent SMHasher test suite&lt;/a&gt;. While these hash functions are optimized for modern Intel x86 with no attempt at portability, the underlying technique can be generalized to any microarchitecture.&lt;/p&gt;
+
+&lt;h3 id=&quot;performance&quot;&gt;Performance&lt;/h3&gt;
+
+&lt;p&gt;MetroHash functions are much faster than comparable algorithms (metro128crc is often memory bandwidth bound for large keys) while offering a statistical profile similar to MD5, a cryptographic hash. Functions generated in the same family, or using a different seed, have identical performance characteristics but are effectively statistically independent.&lt;/p&gt;
+
+&lt;p&gt;Google’s &lt;a href=&quot;https://code.google.com/p/cityhash/&quot;&gt;CityHash&lt;/a&gt; functions are used for speed comparison below since they are among the fastest high-quality functions and are available in the same variants. Relative performance varies a small amount across microarchitectures. The following table is typical for my Haswell test environment.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt; &lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Bulk Hashing&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Small Keys&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;strong&gt;Metro64&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;50% faster than City64&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;15% faster than City64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;strong&gt;Metro128&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;25% faster than City128&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;60% faster than City128&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;strong&gt;Metro128crc&lt;/strong&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;30% faster than City128crc&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;80% faster than City128crc&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;The MetroHash algorithms included are designed to be general-purpose hash functions, much like CityHash. It is also possible to generate hash functions that are more highly optimized for a narrower set of use cases.&lt;/p&gt;
+
+&lt;h3 id=&quot;background&quot;&gt;Background&lt;/h3&gt;
+
+&lt;p&gt;A few years ago I had a number of use cases for hash functions that were not being adequately served by popular algorithms. The hash functions were generally suboptimal, giving up too much speed or too much statistical quality or both. I needed an expanded ecosystem of high-quality, high-performance hash functions that went beyond what something like Google’s &lt;a href=&quot;https://code.google.com/p/cityhash/&quot;&gt;CityHash&lt;/a&gt; could deliver. MetroHash was the working name for my project to create it.&lt;/p&gt;
+
+&lt;p&gt;Designing fast, robust hash functions by hand is painful. My solution was to design algorithms and software that could iteratively generate, analyze, and optimize hash functions across an intractably large universe of potential hash function designs. The nature of the process is beyond the scope of this post, but conceptually it uses gradient descent to search for certain types of smoothable high-order, high-dimensionality functions, derivatives of which can be used to analytically construct a hash function with a relatively high probability of exhibiting high statistical quality. Over the nearly 100,000 compute hours spent on this analysis, the quality of the hash functions producible from the analysis data progressively improved. It was cool research and produced great results.&lt;/p&gt;
+
+&lt;p&gt;There is known room for improvement with additional analysis and likely with expanded use of instruction set extensions. However, this is not an active project for me. I had to dust off the code in order to generate the functions included here.&lt;/p&gt;
+
+&lt;h3 id=&quot;some-notes-and-observations&quot;&gt;Some Notes And Observations&lt;/h3&gt;
+
+&lt;p&gt;The optimization process tends to produce tidy hash functions that conserve a small set of code motifs. This is presumably because they have properties that are nearly optimal for the target microarchitecture or improve predictability of function behavior from the software’s perspective. Hash functions generated this way likely get close to the limits of hash performance for a given combination of microarchitecture, instruction set primitives, and statistical robustness.&lt;/p&gt;
+
+&lt;p&gt;These hash functions were thoroughly tested for statistical weaknesses using standard tools and methods but are not cryptographic designs. Some key patterns may create an anomalous statistical bias in the hash functions. Fortunately, if such a pattern is found then it is straightforward to re-run the analysis and generation process to account for it.&lt;/p&gt;
+
+&lt;p&gt;AES-NI cryptographic instruction primitives available on modern Intel processors are typically too slow for the amount of usable randomness they generate per clock cycle. The instructions have a higher latency than CRC instructions and the output retains significant bias. That said, it would be interesting to force the analysis and optimization process to use that instruction set, given copious computing power, to see what it could come up with.&lt;/p&gt;
+
+</content>
+ </entry>
+ 
+ <entry>
    <title>Why Are Geospatial Databases So Hard To Build?</title>
-   <link href="http://localhost:4000//2015/02/24/geospatial-databases-are-hard/"/>
-   <updated>2015-02-24T00:00:00-08:00</updated>
-   <id>http://localhost:4000/2015/02/24/geospatial-databases-are-hard</id>
-   <content type="html">&lt;p&gt;In 2005, I tried to build my first large-scale geospatial database. PostGIS was unable to keep up with even modest volumes of fast-moving sensor data, so I decided to apply my knowledge of scalable database engines to the problem of analyzing geospatial data. I had minimal experience with geospatial database design, &lt;a href=&quot;http://en.wikipedia.org/wiki/Dunning%E2%80%93Kruger_effect&quot;&gt;but how hard could it be&lt;/a&gt;? As I slowly discovered, the computer science required to build a competent, scalable geospatial database did not even exist.&lt;/p&gt;
+   <link href="http://jandrewrogers.com//2015/03/02/geospatial-databases-are-hard/"/>
+   <updated>2015-03-02T00:00:00-08:00</updated>
+   <id>http://jandrewrogers.com/2015/03/02/geospatial-databases-are-hard</id>
+   <content type="html">&lt;p&gt;In 2005, I decided to design my first geospatial database engine. PostGIS was unable to keep up with the modest volumes of sensor data I was working with and while I was new to geospatial data, I had skill designing database engines. It &lt;a href=&quot;http://en.wikipedia.org/wiki/Dunning%E2%80%93Kruger_effect&quot;&gt;seemed simple enough&lt;/a&gt; to get the scale and performance I required. Nothing could have been further from the truth and the reasons were rarely obvious.&lt;/p&gt;
 
-&lt;p&gt;Most software engineers assume today, as I did a decade ago, that the design of geospatial databases is a straightforward task. While not always obvious, nothing could be further from the truth. The typical methods for representing dynamic geospatial data, from R-trees to hyperdimensional hashing to space-filling curves were all invented in the 1980s or earlier. If you could actually build scalable geospatial databases that way, people would have. &lt;/p&gt;
+&lt;p&gt;Most software engineers assume today, as I did a decade ago, that the design of scalable geospatial databases is a straightforward task. As it turned out, in 2005 the computer science required to design such things did not even exist. Typical methods for representing dynamic geospatial data, from R-trees to “hyperdimensional hashing” to space-filling curves were all invented in the 1980s or earlier. If you could build scalable geospatial databases that way people would have; I incorrectly thought no one had tried.&lt;/p&gt;
 
-&lt;p&gt;Geospatial databases, at a fundamental computer science level, are unrelated to more conventional databases. The surface similarities hide myriad design challenges that are specific to spatial data models. All of the design challenges below are lessons I learned the hard way, manifested as critical defects in real-world applications. You can think of it as a checklist for “is my geospatial database going to fail me at an inconvenient moment”. &lt;/p&gt;
+&lt;p&gt;Geospatial databases, at a basic computer science and implementation level, are unrelated to more conventional databases. The surface similarities hide myriad design challenges that are specific to spatial data models. All of the architectural differences below are lessons I learned the hard way, manifested as critical defects in real-world applications. You can think of it as a checklist for “is my geospatial database going to fail me at an inconvenient moment”.&lt;/p&gt;
 
 &lt;h3 id=&quot;computer-science-does-not-understand-interval-data-types&quot;&gt;Computer Science Does Not Understand Interval Data Types&lt;/h3&gt;
 
-&lt;p&gt;Algorithms in computer science, with rare exception, leverage properties unique to one-dimensional scalar data models. In other words, data types you can abstractly represent as an integer. Even when scalar data types are multidimensional, &lt;a href=&quot;http://en.wikipedia.org/wiki/Space-filling_curve&quot;&gt;they can often be mapped to one dimension&lt;/a&gt;. The majority of data people care about can be represented with scalar types, so it works well. &lt;/p&gt;
+&lt;p&gt;Algorithms in computer science, with rare exception, leverage properties unique to one-dimensional scalar data models. In other words, data types you can abstractly represent as an integer. Even when scalar data types are multidimensional, &lt;a href=&quot;http://en.wikipedia.org/wiki/Space-filling_curve&quot;&gt;they can often be mapped to one dimension&lt;/a&gt;. This works well, as the majority of data people care about can be represented with scalar types.&lt;/p&gt;
 
 &lt;p&gt;If your data model is inherently non-scalar, you enter an algorithm wasteland in the computer science literature. Paths, vectors, polygons, and other elementary aggregations of scalar coordinates used in spatial analysis are non-scalar data types. Computational relationships are topological instead of graph-like.&lt;/p&gt;
 
@@ -33,13 +185,13 @@
 
 &lt;ul&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;There are no dynamic sharding algorithms that produce uniform distributions of interval data&lt;/strong&gt;. In fact, you can show that a general partitioning function that uniformly distributes &lt;em&gt;n&lt;/em&gt;-dimensional interval data in &lt;em&gt;n&lt;/em&gt;-dimensional space does not even exist. Hash and range partitioning, which in this context is essentially a distributed Quad-Tree, are hammers for a problem that is not a nail. &lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;There are no dynamic sharding algorithms that produce uniform distributions of interval data&lt;/strong&gt;. In fact, you can show that a general partitioning function that uniformly distributes &lt;em&gt;n&lt;/em&gt;-dimensional interval data in &lt;em&gt;n&lt;/em&gt;-dimensional space does not even exist. Hash and range partitioning, which in this context is essentially a distributed Quad-Tree, are demonstrably poor choices but still popular in naive implementations.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Interval indexing algorithms in literature are either not scalable or not general&lt;/strong&gt;. Ironically, the literature describes hundreds of algorithms. The R-Tree family of algorithms, the traditional choice for small data sets, cannot scale even in theory. The Quad-Tree family of algorithms are pathological for interval data; R-Trees were invented to replace Quad-Trees for this reason. Sophisticated variants of grid-file indexing (“tiling”) can scale for static interval data but fail for dynamic data and most software engineers use even more naive variants in practice.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Interval indexing algorithms in literature are either not scalable or not general&lt;/strong&gt;. Ironically, the literature describes hundreds of algorithms. The &lt;a href=&quot;http://en.wikipedia.org/wiki/R-tree&quot;&gt;R‑Tree&lt;/a&gt; family of algorithms, the traditional choice for small data sets, cannot scale even in theory. The &lt;a href=&quot;http://en.wikipedia.org/wiki/Quadtree&quot;&gt;Quad-Tree&lt;/a&gt; family of algorithms are pathological for interval data; R-Trees were invented to replace Quad-Trees for this reason. Sophisticated variants of &lt;a href=&quot;http://en.wikipedia.org/wiki/Grid_(spatial_index)&quot;&gt;grid indexing&lt;/a&gt; (“tiling”) can scale for static interval data but fail for dynamic data and most software engineers use even more naive variants in practice.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Interval data sets are not sortable and have no exploitable pseudo-order&lt;/strong&gt;. The assumption that data has exploitable order is so pervasive in computer science that many design patterns either have no benefits or are incorrect when applied to interval data. For example, what is the best storage format for an analytical geospatial database? The answer is not obvious. Many storage formats, such as those in columnar databases, make tradeoffs predicated on data being sortable.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Interval data sets have no exploitable order&lt;/strong&gt;. The assumption that data is sortable is so pervasive in computer science that many design patterns either have no benefits or are incorrect when applied to interval data. For example, what is the best storage format for an analytical geospatial database? The answer is not obvious. Many storage formats, such as those in columnar databases, make tradeoffs that assume the sortability of scalar data types.&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ul&gt;
 
@@ -47,254 +199,47 @@
 
 &lt;p&gt;Most geospatial databases were built for creating maps. As in, geospatial data models that can be rendered as image tiles or paper products. Mapping databases evolved in an environment where the data sets were small, rarely changed, and production of a finished output could take days to complete.&lt;/p&gt;
 
-&lt;p&gt;Modern spatial applications are increasingly built around real-time spatiotemporal analysis and contextualization of data from IoT, sensor networks, and mobile platforms. These workloads look nothing like making maps. In fact, these workloads are unlike any workload studied in database literature. And therein lies the challenge: any database engine optimized for a modern geospatial workload must be designed from first principles. There are no “shoulders of giants” in database engines to stand on because these workloads were never on their radar.&lt;/p&gt;
+&lt;p&gt;Modern spatial applications are increasingly built around real-time spatial analysis and contextualization of data from IoT, sensor networks, and mobile platforms. These workloads look nothing like making maps. In fact, these workloads are unlike any workload studied in database literature. There is no existing design to copy that can support this use case. A database engine optimized for a modern geospatial workload must be designed and implemented from first principles, which requires unusual levels of skill.&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Many spatial data sources continuously generate data at extremely high rates&lt;/strong&gt;. The Twitter firehose is barely a trickle compared to many high-value data sources that must be spatially organized. Not only do you need to parse, index, and store complex spatial data at rates of petabytes per day, but this must be concurrent with low-latency queries against incoming and historical data that cannot be summarized.  In-memory databases are useless here; the volume of online data is too large. While technically feasible, few databases were designed for this workload.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Many spatial data sources continuously generate data at extremely high rates&lt;/strong&gt;. The Twitter firehose is a trickle compared to many high-value data sources that must be spatially organized. Not only do you need to parse, index, and store complex spatial data at rates of petabytes per day, but this must be concurrent with low-latency queries against incoming and historical data that cannot be summarized.  In-memory databases are useless here; the volume of online data is too large. While technically feasible, virtually no databases were designed for this workload.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Traditional disk storage and I/O scheduler designs pervasively assume a trivial ordered log or tree structure&lt;/strong&gt;. This reflects the typical organization of scalar data models. What is the optimal storage layout for interval data models with irregular multidimensional locality characteristics and no order except temporal? How do you design an I/O scheduler that can intelligently schedule operations in a way that reflects those relationships? Not answering this question results in an integer factor loss in effective storage bandwidth.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Traditional storage, execution, and I/O scheduler designs assume a simple ordered log or tree structure&lt;/strong&gt;. This reflects the typical organization of scalar data models. Complex multidimensional data traversals appear irregular and semi-random to traditional database engines, leading to suboptimal operation scheduling that greatly reduces throughput. Sophisticated scheduler designs for spatial relationship traversals do not exist like they do for relational databases.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Geospatial workloads tend to be highly skewed and constantly shifting over the data model in unpredictable ways&lt;/strong&gt;. This creates the unique characteristic that you can’t mitigate hotspots with the traditional approach commonly used in time-series databases of making &lt;em&gt;a priori&lt;/em&gt; assumptions about workload distribution and hardcoding it into the software. Needing to adaptively mitigate hotspots with unpredictable and severe skew is a novel requirement.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Geospatial workloads tend to be highly skewed and constantly shifting over the data model in unpredictable ways&lt;/strong&gt;. Traditional skew and hotspot mitigation strategies based on &lt;em&gt;a priori&lt;/em&gt; assumptions about workload distribution that can be hardcoded into software, such as those used to deal with time-series data, are largely useless for geospatial. Adaptive mitigation of severe and unpredictable hotspotting is a novel architectural requirement.&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h3 id=&quot;correct-fast-computational-geometry-is-really-hard&quot;&gt;Correct, Fast Computational Geometry Is Really Hard&lt;/h3&gt;
 
-&lt;p&gt;Geospatial operations are inherently built around computational geometry primitives. Anyone can Google a description of the &lt;a href=&quot;http://en.wikipedia.org/wiki/Vincenty%27s_formulae&quot;&gt;Vincenty algorithm&lt;/a&gt; but implementing non-Euclidean operators that are correct, precise, and fast will likely be beyond their ken (and mine). Existing implementations were designed for cartographic use cases, where performance and precision are not as important as they are for analytics.&lt;/p&gt;
+&lt;p&gt;Geospatial operators are inherently built around computational geometry primitives. Looking up a description of the &lt;a href=&quot;http://en.wikipedia.org/wiki/Vincenty%27s_formulae&quot;&gt;Vincenty algorithm&lt;/a&gt; is easy. Implementing non-Euclidean operators that are correct, precise, and fast in the general case is beyond most programmers’ ken (and mine). Implementations designed for cartographic and GIS use cases typically lack the performance and precision required for analytics.&lt;/p&gt;
 
-&lt;p&gt;Geospatial analytics requires receiving trustworthy answers in a timeframe that matters. If you are modeling a global supply chain, whether corn or coal, a 2% error due to low-quality computational geometry has billion  dollar ramifications. Performance is often so poor that leading commercial vendors tout analytic results that are delivered in weeks for data sets that fit in memory. That may be good enough for making maps but it is nigh useless for modern sensor analysis applications.&lt;/p&gt;
+&lt;p&gt;Analytics requires producing answers in a timeframe that matters with tiny and precisely characterized error bounds. In practice, performance is often so poor that commercial vendors tout analytic results that are delivered in weeks for data sets that could fit in memory. Reliably producing correct and precise computational results from complex geometry operations is notoriously difficult to achieve, particularly at scale. This may be good enough for making maps but is nearly useless for modern sensor analysis applications.&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;The physical world is non-Euclidean&lt;/strong&gt;. The curvature of our Earth’s gravity field is approximately 8 centimeters per kilometer. This produces significant horizon effects even within a single large building. The simplest geometric surface that still applies to most calculations is a geodetic ellipsoid. The computationally simpler approximations used under the hood by many popular platforms work for maps but not for spatial analytics. &lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;The physical world is non-Euclidean&lt;/strong&gt;. The curvature of Earth’s gravity field is approximately 8 centimeters per kilometer. This produces horizon effects even within a single large building. The simplest geometric surface that still applies to most calculations is a geodetic ellipsoid. The computationally simpler approximations used under the hood by many popular platforms work for maps but not for spatial analytics.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Geospatial analytics requires the ability to do polygon intersections quickly&lt;/strong&gt;. Polygon intersection algorithms, like relational joins, are quadratic in nature. Comparing polygons with thousands of vertices, which are common in some industries, may require a million geodetic comparisons to evaluate one record. Multiply that by billions of records and your query may not complete this month. This often shows up as inadvertent denial-of-service attacks in poorly designed geospatial databases.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Geospatial analytics requires the ability to do polygon intersections quickly&lt;/strong&gt;. Polygon intersection algorithms, like relational joins, are quadratic in nature. Naively intersecting polygons with thousands of vertices, which are common in some industries, may require millions of high-precision geodetic operations to evaluate one record. Multiply that by billions of records and your query may not complete this month. This often shows up as an unintentional denial-of-service attack on poorly engineered geospatial databases.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;Computational geometry has to be precise if you care about analysis&lt;/strong&gt;. For trivial algebraic geometry it is not difficult to guarantee the error bounds on floating point computations. Most programmers do not realize that the transcendental functions implemented in their CPUs exhibit significant losses of precision in a variety of edge cases that must be accounted for such that the native primitives cannot be trusted for calculations that matter and certainly not at scales where the range of those primitives will be thoroughly tested.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Computational geometry has to be precise if you care about analysis&lt;/strong&gt;. For trivial algebraic geometry it is not difficult to guarantee the error bounds on floating point computations. Most programmers do not realize that the transcendental functions implemented in their CPUs exhibit significant losses of precision in a variety of edge cases that must be accounted for. At the scale of these data sets, the edge cases are tested quickly and frequently.&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;difficult-but-not-impossible&quot;&gt;Difficult, But Not Impossible&lt;/h3&gt;
+&lt;h3 id=&quot;difficult-but-not-impossible&quot;&gt;Difficult But Not Impossible&lt;/h3&gt;
 
 &lt;p&gt;Any discussion of how to solve one of these problems is a long blog post on its own but suffice it to say for now that these are all solvable with sufficiently clever computer science and competent implementation. However, these problems are not trivial and some have solutions that are not in the public computer science literature.&lt;/p&gt;
 
-&lt;p&gt;With the emergence of mobile, IoT, and sensor analytics as high-value markets, every database platform is scrambling to “enable” spatial analytics. It is extremely difficult to add adequate support for high-performance spatial analytics to databases that were not purpose-built for that use case. Many database companies have tried and failed. &lt;/p&gt;
+&lt;p&gt;With the emergence of mobile, IoT, and sensor analytics as high-value markets, every database platform is scrambling to “enable” spatial analytics. It is extremely difficult to add adequate support for high-performance spatial analytics to databases that were not purpose-built for that use case. Many database companies have tried and failed.&lt;/p&gt;
 
-&lt;p&gt;From a database architecture standpoint, the root of the problem is that the internals of a database engine designed for traditional “text and numbers” data models, which is virtually all of them, has very little in common with a database engine designed for real-time spatial data models. No amount of software duct tape will get around this gross impedance mismatch. &lt;/p&gt;
+&lt;p&gt;From a database architecture standpoint, the root of the problem is that the internals of a database engine designed for traditional “text and numbers” data models, which is virtually all of them, has very little in common with a database engine designed for real-time spatial data models. No amount of software duct tape circumvents this impedance mismatch yet this is how most people attempt to build a geospatial database. That is how I tried to build a geospatial database and why it took me years to actually build one.&lt;/p&gt;
 
-</content>
- </entry>
- 
- <entry>
-   <title>Introducing Poole</title>
-   <link href="http://localhost:4000//2014/01/02/introducing-poole/"/>
-   <updated>2014-01-02T00:00:00-08:00</updated>
-   <id>http://localhost:4000/2014/01/02/introducing-poole</id>
-   <content type="html">&lt;p&gt;&lt;em&gt;The Strange Case of Dr. Jekyll and Mr. Hyde&lt;/em&gt; tells the story of a lawyer investigating the connection of two persons, Dr. Henry Jekyll and Mr. Edward Hyde. Chief among the novel’s supporting cast is a man by the name of Mr. Poole, Dr. Jekyll’s loyal butler.&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;Poole is the butler for &lt;a href=&quot;http://jekyllrb.com&quot;&gt;Jekyll&lt;/a&gt;, the static site generator. It’s designed and developed by &lt;a href=&quot;https://twitter.com/mdo&quot;&gt;@mdo&lt;/a&gt; to provide a clear and concise foundational setup for any Jekyll site. It does so by furnishing a full vanilla Jekyll install with example templates, pages, posts, and styles.&lt;/p&gt;
-
-&lt;p&gt;There are currently two themes built on Poole:&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;a href=&quot;http://hyde.getpoole.com&quot;&gt;Hyde&lt;/a&gt;&lt;/li&gt;
-  &lt;li&gt;&lt;a href=&quot;http://lanyon.getpoole.com&quot;&gt;Lanyon&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Learn more and contribute on &lt;a href=&quot;https://github.com/poole&quot;&gt;GitHub&lt;/a&gt;.&lt;/p&gt;
-
-&lt;h3 id=&quot;whats-included&quot;&gt;What’s included&lt;/h3&gt;
-
-&lt;p&gt;Poole is a streamlined Jekyll site designed and built as a foundation for building more meaningful themes. Poole, and every theme built on it, includes the following:&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;Complete Jekyll setup included (layouts, config, &lt;a href=&quot;/404.html&quot;&gt;404&lt;/a&gt;, &lt;a href=&quot;/atom.xml&quot;&gt;RSS feed&lt;/a&gt;, posts, and &lt;a href=&quot;/about&quot;&gt;example page&lt;/a&gt;)&lt;/li&gt;
-  &lt;li&gt;Mobile friendly design and development&lt;/li&gt;
-  &lt;li&gt;Easily scalable text and component sizing with &lt;code&gt;rem&lt;/code&gt; units in the CSS&lt;/li&gt;
-  &lt;li&gt;Support for a wide gamut of HTML elements&lt;/li&gt;
-  &lt;li&gt;Related posts (time-based, because Jekyll) below each post&lt;/li&gt;
-  &lt;li&gt;Syntax highlighting, courtesy Pygments (the Python-based code snippet highlighter)&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Additional features are available in individual themes.&lt;/p&gt;
-
-&lt;h3 id=&quot;browser-support&quot;&gt;Browser support&lt;/h3&gt;
-
-&lt;p&gt;Poole and it’s themes are by preference a forward-thinking project. In addition to the latest versions of Chrome, Safari (mobile and desktop), and Firefox, it is only compatible with Internet Explorer 9 and above.&lt;/p&gt;
-
-&lt;h3 id=&quot;download&quot;&gt;Download&lt;/h3&gt;
-
-&lt;p&gt;Poole is developed on and hosted with GitHub. Head to the &lt;a href=&quot;https://github.com/poole/poole&quot;&gt;GitHub repository&lt;/a&gt; for downloads, bug reports, and features requests.&lt;/p&gt;
-
-&lt;p&gt;Thanks!&lt;/p&gt;
-</content>
- </entry>
- 
- <entry>
-   <title>Example content</title>
-   <link href="http://localhost:4000//2014/01/01/example-content/"/>
-   <updated>2014-01-01T00:00:00-08:00</updated>
-   <id>http://localhost:4000/2014/01/01/example-content</id>
-   <content type="html">&lt;div class=&quot;message&quot;&gt;
-  Howdy! This is an example blog post that shows several types of HTML content supported in this theme.
-&lt;/div&gt;
-
-&lt;p&gt;Cum sociis natoque penatibus et magnis &lt;a href=&quot;#&quot;&gt;dis parturient montes&lt;/a&gt;, nascetur ridiculus mus. &lt;em&gt;Aenean eu leo quam.&lt;/em&gt; Pellentesque ornare sem lacinia quam venenatis vestibulum. Sed posuere consectetur est at lobortis. Cras mattis consectetur purus sit amet fermentum.&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Curabitur blandit tempus porttitor. Nullam quis risus eget urna mollis ornare vel eu leo. Nullam id dolor id nibh ultricies vehicula ut id elit.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;Etiam porta &lt;strong&gt;sem malesuada magna&lt;/strong&gt; mollis euismod. Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.&lt;/p&gt;
-
-&lt;h2 id=&quot;inline-html-elements&quot;&gt;Inline HTML elements&lt;/h2&gt;
-
-&lt;p&gt;HTML defines a long list of available inline tags, a complete list of which can be found on the &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/HTML/Element&quot;&gt;Mozilla Developer Network&lt;/a&gt;.&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;strong&gt;To bold text&lt;/strong&gt;, use &lt;code&gt;&amp;lt;strong&amp;gt;&lt;/code&gt;.&lt;/li&gt;
-  &lt;li&gt;&lt;em&gt;To italicize text&lt;/em&gt;, use &lt;code&gt;&amp;lt;em&amp;gt;&lt;/code&gt;.&lt;/li&gt;
-  &lt;li&gt;Abbreviations, like &lt;abbr title=&quot;HyperText Markup Langage&quot;&gt;HTML&lt;/abbr&gt; should use &lt;code&gt;&amp;lt;abbr&amp;gt;&lt;/code&gt;, with an optional &lt;code&gt;title&lt;/code&gt; attribute for the full phrase.&lt;/li&gt;
-  &lt;li&gt;Citations, like &lt;cite&gt;— Mark otto&lt;/cite&gt;, should use &lt;code&gt;&amp;lt;cite&amp;gt;&lt;/code&gt;.&lt;/li&gt;
-  &lt;li&gt;&lt;del&gt;Deleted&lt;/del&gt; text should use &lt;code&gt;&amp;lt;del&amp;gt;&lt;/code&gt; and &lt;ins&gt;inserted&lt;/ins&gt; text should use &lt;code&gt;&amp;lt;ins&amp;gt;&lt;/code&gt;.&lt;/li&gt;
-  &lt;li&gt;Superscript &lt;sup&gt;text&lt;/sup&gt; uses &lt;code&gt;&amp;lt;sup&amp;gt;&lt;/code&gt; and subscript &lt;sub&gt;text&lt;/sub&gt; uses &lt;code&gt;&amp;lt;sub&amp;gt;&lt;/code&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Most of these elements are styled by browsers with few modifications on our part.&lt;/p&gt;
-
-&lt;h2 id=&quot;heading&quot;&gt;Heading&lt;/h2&gt;
-
-&lt;p&gt;Vivamus sagittis lacus vel augue rutrum faucibus dolor auctor. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.&lt;/p&gt;
-
-&lt;h3 id=&quot;code&quot;&gt;Code&lt;/h3&gt;
-
-&lt;p&gt;Cum sociis natoque penatibus et magnis dis &lt;code&gt;code element&lt;/code&gt; montes, nascetur ridiculus mus.&lt;/p&gt;
-
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// Example can be run directly in your JavaScript console&lt;/span&gt;
-
-&lt;span class=&quot;c1&quot;&gt;// Create a function that takes two arguments and returns the sum of those arguments&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;adder&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;Function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;a&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;b&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;return a + b&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-
-&lt;span class=&quot;c1&quot;&gt;// Call the function&lt;/span&gt;
-&lt;span class=&quot;nx&quot;&gt;adder&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;// &amp;gt; 8&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-
-&lt;p&gt;Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa.&lt;/p&gt;
-
-&lt;h3 id=&quot;gists-via-github-pages&quot;&gt;Gists via GitHub Pages&lt;/h3&gt;
-
-&lt;p&gt;Vestibulum id ligula porta felis euismod semper. Nullam quis risus eget urna mollis ornare vel eu leo. Donec sed odio dui.&lt;/p&gt;
-
-&lt;script src=&quot;https://gist.github.com/5555251.js?file=gist.md&quot;&gt; &lt;/script&gt;
-
-&lt;p&gt;Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Nullam quis risus eget urna mollis ornare vel eu leo. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec sed odio dui. Vestibulum id ligula porta felis euismod semper.&lt;/p&gt;
-
-&lt;h3 id=&quot;lists&quot;&gt;Lists&lt;/h3&gt;
-
-&lt;p&gt;Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;Praesent commodo cursus magna, vel scelerisque nisl consectetur et.&lt;/li&gt;
-  &lt;li&gt;Donec id elit non mi porta gravida at eget metus.&lt;/li&gt;
-  &lt;li&gt;Nulla vitae elit libero, a pharetra augue.&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue.&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;Vestibulum id ligula porta felis euismod semper.&lt;/li&gt;
-  &lt;li&gt;Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.&lt;/li&gt;
-  &lt;li&gt;Maecenas sed diam eget risus varius blandit sit amet non magna.&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;Cras mattis consectetur purus sit amet fermentum. Sed posuere consectetur est at lobortis.&lt;/p&gt;
-
-&lt;dl&gt;
-  &lt;dt&gt;HyperText Markup Language (HTML)&lt;/dt&gt;
-  &lt;dd&gt;The language used to describe and define the content of a Web page&lt;/dd&gt;
-
-  &lt;dt&gt;Cascading Style Sheets (CSS)&lt;/dt&gt;
-  &lt;dd&gt;Used to describe the appearance of Web content&lt;/dd&gt;
-
-  &lt;dt&gt;JavaScript (JS)&lt;/dt&gt;
-  &lt;dd&gt;The programming language used to build advanced Web sites and applications&lt;/dd&gt;
-&lt;/dl&gt;
-
-&lt;p&gt;Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Nullam quis risus eget urna mollis ornare vel eu leo.&lt;/p&gt;
-
-&lt;h3 id=&quot;images&quot;&gt;Images&lt;/h3&gt;
-
-&lt;p&gt;Quisque consequat sapien eget quam rhoncus, sit amet laoreet diam tempus. Aliquam aliquam metus erat, a pulvinar turpis suscipit at.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;http://placehold.it/800x400&quot; alt=&quot;placeholder&quot; title=&quot;Large example image&quot; /&gt;
-&lt;img src=&quot;http://placehold.it/400x200&quot; alt=&quot;placeholder&quot; title=&quot;Medium example image&quot; /&gt;
-&lt;img src=&quot;http://placehold.it/200x200&quot; alt=&quot;placeholder&quot; title=&quot;Small example image&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;tables&quot;&gt;Tables&lt;/h3&gt;
-
-&lt;p&gt;Aenean lacinia bibendum nulla sed consectetur. Lorem ipsum dolor sit amet, consectetur adipiscing elit.&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;Name&lt;/th&gt;
-      &lt;th&gt;Upvotes&lt;/th&gt;
-      &lt;th&gt;Downvotes&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tfoot&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Totals&lt;/td&gt;
-      &lt;td&gt;21&lt;/td&gt;
-      &lt;td&gt;23&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tfoot&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Alice&lt;/td&gt;
-      &lt;td&gt;10&lt;/td&gt;
-      &lt;td&gt;11&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Bob&lt;/td&gt;
-      &lt;td&gt;4&lt;/td&gt;
-      &lt;td&gt;3&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Charlie&lt;/td&gt;
-      &lt;td&gt;7&lt;/td&gt;
-      &lt;td&gt;9&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;Nullam id dolor id nibh ultricies vehicula ut id elit. Sed posuere consectetur est at lobortis. Nullam quis risus eget urna mollis ornare vel eu leo.&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;Want to see something else added? &lt;a href=&quot;https://github.com/poole/poole/issues/new&quot;&gt;Open an issue.&lt;/a&gt;&lt;/p&gt;
-</content>
- </entry>
- 
- <entry>
-   <title>What's Jekyll?</title>
-   <link href="http://localhost:4000//2013/12/31/whats-jekyll/"/>
-   <updated>2013-12-31T00:00:00-08:00</updated>
-   <id>http://localhost:4000/2013/12/31/whats-jekyll</id>
-   <content type="html">&lt;p&gt;&lt;a href=&quot;http://jekyllrb.com&quot;&gt;Jekyll&lt;/a&gt; is a static site generator, an open-source tool for creating simple yet powerful websites of all shapes and sizes. From &lt;a href=&quot;https://github.com/jekyll/jekyll/blob/master/README.markdown&quot;&gt;the project’s readme&lt;/a&gt;:&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Jekyll is a simple, blog aware, static site generator. It takes a template directory […] and spits out a complete, static website suitable for serving with Apache or your favorite web server. This is also the engine behind GitHub Pages, which you can use to host your project’s page or blog right here from GitHub.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;It’s an immensely useful tool. Find out more by &lt;a href=&quot;https://github.com/jekyll/jekyll&quot;&gt;visiting the project on GitHub&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Geospatial databases are challenging to build in the best case. They are nigh impossible to build if you naively assume they are essentially the same as more conventional databases with a little bit of geospatial sprinkled on top.&lt;/p&gt;
 </content>
  </entry>
  
