@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "SpaceCurve: An Utterly Unique And Absurdly Fast Geospatial Database"
+title: "SpaceCurve: An Unique And Fast Geospatial Database"
 ---
 
 The design of SpaceCurve has been the object of speculation for many years. SpaceCurve was created to provide a real-time, continuously updated, perpetually logged data view of everything that happens in the physical world for analysis at extreme scales. The term "database" is used loosely.

@@ -1,6 +1,6 @@
 # Permalinks
 permalink:        pretty
-relative_permalinks: true
+# relative_permalinks: true
 
 # Setup
 title:            J. Andrew Rogers
@@ -19,3 +19,6 @@ author:
 version:          1.0.0
 github:
   repo:           https://github.com/poole/poole
+
+# Plugins
+plugins: [jekyll-paginate]
