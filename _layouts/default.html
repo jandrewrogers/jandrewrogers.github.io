@@ -9,19 +9,19 @@
     <div class="container content">
       <header class="masthead">
         <h2 class="masthead-title">
-            <a href="{{ site.baseurl }}" title="Home">{{ site.title }}</a>
+            <a href="{{ site.baseurl }}/" title="Home">{{ site.title }}</a>
             <br />
             <small>{{ site.tagline }}</small>
         </h2>
         <h2 class="masthead-menu">
-          <a href="/about/" title="About">About</a>
+          <a href="{{ site.baseurl }}/about/" title="About">About</a>
           &nbsp;
-          <a href="/archive/" title="Archive">Archive</a>
+          <a href="{{ site.baseurl }}/archive/" title="Archive">Archive</a>
           <br />
-          <a href="mailto:{{ site.author.email }}"><img class="masthead-icon" src="/public/email.svg" height="24" width="24" /></a>
-          <a href="{{ site.author.twitter  }}"><img class="masthead-icon" src="/public/twitter.svg"  height="24" width="24" /></a>
-          <a href="{{ site.author.linkedin }}"><img class="masthead-icon" src="/public/linkedin.svg" height="24" width="24" /></a>
-          <a href="{{ site.author.facebook }}"><img class="masthead-icon" src="/public/facebook.svg" height="24" width="24" /></a>
+          <a href="mailto:{{ site.author.email }}"><img class="masthead-icon" src="{{ site.baseurl }}/public/email.svg" height="24" width="24" /></a>
+          <a href="{{ site.author.twitter  }}"><img class="masthead-icon" src="{{ site.baseurl }}/public/twitter.svg"  height="24" width="24" /></a>
+          <a href="{{ site.author.linkedin }}"><img class="masthead-icon" src="{{ site.baseurl }}/public/linkedin.svg" height="24" width="24" /></a>
+          <a href="{{ site.author.facebook }}"><img class="masthead-icon" src="{{ site.baseurl }}/public/facebook.svg" height="24" width="24" /></a>
         </h2>
       </header>
 

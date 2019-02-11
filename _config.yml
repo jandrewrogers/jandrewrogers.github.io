@@ -1,13 +1,12 @@
 # Permalinks
 permalink:        pretty
-# relative_permalinks: true
 
 # Setup
 title:            J. Andrew Rogers
 tagline:          Pursuit of a Perfect Algorithm
 url:              http://jandrewrogers.com
 paginate:         1
-baseurl:          /
+baseurl:          
 author:
   name:           J. Andrew Rogers
   twitter:        https://twitter.com/jandrewrogers
