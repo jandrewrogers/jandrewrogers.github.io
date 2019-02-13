@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Fast Perfect Hashing
+title: Fast Perfect Hashing Of Integral Types
 ---
 
 A perfect hash function is one that is collision-free. By implication, the hash must be at least as many bytes as the key and the function is theoretically reversible, though not always tractably so. In other words, perfect hashing is a special case of encryption. Because the hash is no smaller than the key, the primary use case is randomizing small values like integral types. 
