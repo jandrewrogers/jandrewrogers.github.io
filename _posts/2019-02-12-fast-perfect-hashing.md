@@ -3,7 +3,7 @@ layout: post
 title: Fast Perfect Hashing
 ---
 
-A perfect hash function is one that is collision-free. By implication, the hash must be at least as many bytes as the key and the function is theoretically reversible, though not always tractably so. In other words, perfect hashing is a special case of encryption.
+A perfect hash function is one that is collision-free. By implication, the hash must be at least as many bytes as the key and the function is theoretically reversible, though not always tractably so. In other words, perfect hashing is a special case of encryption. Because the hash is no smaller than the key, the primary use case is randomizing small values like integral types. 
 
 Below I describe an algorithm that takes 8-, 16-, 32-, or 64-bit keys and computes a high-quality key-sized hash in single-digit clock cycles that is collision-free. Other key sizes, such as 24-bits, are a trivial extension. The algorithm exploits the internal structure of the AES encryption algorithm to compute collision-free hashes that are smaller than the 128-bit AES block size using the AES instructions available on most modern CPUs. 
 
